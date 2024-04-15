@@ -3,6 +3,7 @@
 # Building local environment
 
 To create a virtual environment by python,
+https://www.notion.so/Champagne-Problems-602d2e3a52a84e92a86309711347f0af?pvs=4
 
 ```shell
 $ python -m venv .venv
