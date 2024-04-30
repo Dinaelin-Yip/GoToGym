@@ -4,7 +4,6 @@
 
 To create a virtual environment by python,
 https://www.notion.so/Champagne-Problems-602d2e3a52a84e92a86309711347f0af?pvs=4
-https://www.notion.so/legalforce/To-the-next-intern-ab8fe9268094422f8089705d466f47b3
 
 ```shell
 $ python -m venv .venv
