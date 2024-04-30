@@ -1,0 +1,202 @@
+To create a virtual machine instance through GCP, refer to [Onboarding note](https://doc.research.lf-rd.com/codelab/monodoc/general/onboarding.html).
+
+Let’s call the virtual machine instance a CPU instance (where you do not use GPUs) or a GPU instance (where you do use GPUS).
+
+After you create a CPU instance, enter `mono`, where Bazel is used to build and test software projects.
+
+# Bazel + Github PR
+
+Bazel is an open-source build and test tool developed by Google.
+
+We use Bazel to
+
+- Improve code quality
+- Help test code
+- Run one project on different VMs without installation of extra python repositories
+
+Here are the steps to create your own project.
+
+### Step 0 Begin
+
+Enter `//experimental/users/your_name/your_project` . 
+
+Since the github repository `mono` is managed by Bazel, the double slash `\\` represents the workspace path.
+
+### Step 1 Create a branch
+
+Create a [JIRA](https://legalforce.atlassian.net/browse/RES-2177) ticket, get your ticker number (such as [DUC-6666]).
+
+In VSCode, create a branch based on `origin/main` . If you create the branch based on `main`, a CI error would occur, but it could be fixed by
+
+```python
+git pull --rebase origin main 
+```
+
+The branch is expected to be named as something like `DUC-6666-branch-name` .
+
+### Step 2 Bazel Extensions
+
+Download VSCode extensions: [Black](https://www.notion.so/Using-Black-in-your-VMs-456f8fbaa2f2489ba77ed69fec254629?pvs=21) , [Flake8](https://www.notion.so/Using-Flake8-in-your-VMs-36d6727b5dbc4623a24c0358e95e0c4d?pvs=21) and [Mypy](https://www.notion.so/Using-mypy-in-your-VMs-736cfdfd9f8341619a4cd5214c0c5e17?pvs=21) .
+
+Suppose that you have written a python script, `lfird.py` .
+
+```python
+"""The python script helps to ...
+
+To run this script, enter `mono/experimental/users/your_name/your_name` and try:
+```
+bazel run :lfird -- \
+	--pred_file=$PWD/lfird_pred.json
+	--other_attribute=...
+```
+"""
+
+import a # internal repositories of python
+import b
+
+import c # third party repositories
+
+from experimental.users.your_name.your_project.other_file import ClassA # from other files in this project
+
+def convert_json_to_data(pred_file: str) -> Dict[str, ClassA]:
+	...
+	return prediction_data
+```
+
+You could use those extensions to check the code format.
+
+### Step 3 Write Test case
+
+The python script that you have written is called, a source file.
+
+Each source file has a test file. In the test file, each test function aims to test one main function in the source file.
+
+Write a test case for the python script.
+
+```python
+"""The python script is the test file of lfird.py."""
+
+from experimental.users.your_name.your_project import lfird # from other files in this project
+
+def convert_json_to_data_test -> None: # Create a temporary file if you need it
+	...
+	prediction_data = convert_json_to_data(pred_file)
+	assert prediction_data == ...
+```
+
+### Step 4 BUILD file
+
+Add a BUILD file to state the repositories you need in this project.
+
+```python
+py3_binary(
+    name = "lfird",
+    srcs = ["lfird.py"],
+    deps = [
+        py3_requirement("c"),
+    ],
+)
+
+py3_test(
+    name = "lfird_test",
+    srcs = ["lfird_test.py"],
+    deps = [
+        ":lfird",
+    ],
+)
+```
+
+### Step 5 Run
+
+To run `lfird.py`  ,
+
+```python
+bazel run :lfird -- --pred_file=$PWD/lfird_pred.json --other
+```
+
+To test `lfird.py` ,
+
+```python
+bazel test :lfird_test
+```
+
+### Step 6 Before PR
+
+Before git push, to avoid different types of CI errors, DO NOT FORGET to run scripts in `//monobin/lint` to check possible errors.
+
+Enter `mono/experimental/users/your_name/your_project`  and run,
+
+```bash
+//monobin/lint/black . # Check line indentation, spalength, spacing
+//monobin/lint/flake8 . # Check varaibles, imports
+//monobin/lint/docstring . # Check string literals of functions, modules
+//monobin/lint/mypy . # Check variable types
+```
+
+Also, check your BUILD file by,
+
+```bash
+//monobin/lint/buildifier BUILD
+```
+
+If the output is `format # BUILD` , check the imports and spaces in your BUILD file.
+
+### Small Tips
+
+For test cases, when you need to create a temporary file,
+
+```bash
+with tempfile.TemporaryDirectory() as temp_dir:
+    json_file_path = os.path.join(temp_dir, 'Cats Contract_documented.json')
+    with open(json_file_path, 'w') as json_file:
+        json.dump(json_data, json_file, indent=4)
+```
+
+For source files, please be careful that the python file is not executed on the root it seems to be.
+
+```bash
+bazel run :lfird -- \
+    --hello=$PWD/cats.csv \
+```
+
+# GCP Instance
+
+To run models on GPU, you need to create a GPU instance. But maybe something important about of the download process misses in [Onboarding note](https://doc.research.lf-rd.com/codelab/monodoc/general/onboarding.html).
+
+When I tried to use Nvidia L4 GPU, I couldn’t find the GPU anywhere. So I tried NVIDIA T4 GPU.
+
+### Step 1
+
+Create a instance and set the machine-type to be `n1-standard-8` . (I used `n1-standard-1` at first, but the memory was not enough.)
+
+```bash
+gcloud compute instances create ${GCP_HOST_NAME} \
+    --machine-type n1-standard-8
+```
+
+After creating the instance, add a NVIDIA T4 GPU to this instance on the webpage [GCP](https://console.cloud.google.com/compute/instances?referrer=search&project=rd-research-dev).
+
+### Step 2
+
+Follow the onboarding note, git clone mono, and run 4 shell scripts.
+
+Before running the 4 shell scripts,  add the following contents to `/etc/apt/sources.list` :
+
+```bash
+deb http://deb.debian.org/debian buster main
+deb-src http://deb.debian.org/debian buster main
+deb http://security.debian.org/debian-security buster/updates main
+deb-src http://security.debian.org/debian-security buster/updates main
+deb http://deb.debian.org/debian buster-updates main
+deb-src http://deb.debian.org/debian buster-updates main
+```
+
+# Finally
+
+Communication is very important.
+
+If you encounter a very difficult problem, start a meeting with other group members to solve it together.
+
+If you are going to work on a task (write a script, revise your code), make sure you have discussed with your leader about how to work on it clearly. (the input and output of the script)
+
+Pair coding is very efficient!
